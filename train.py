@@ -20,7 +20,6 @@ def setup():
     parser.add_argument("--no-cuda", dest="cuda", action="store_false")
     parser.add_argument("--batchSize", type=int, default=64, help="Batch size")
     parser.add_argument("--startFrom", type=int, default=0, help="Continue from")
-    parser.add_argument("--epochs", type=int, default=100, help="Total number of epochs")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning Rate. Default=1e-4")
     parser.add_argument("--scale", default=4, type=int, help="Evalution scale factor, Default: 4")
     parser.set_defaults(cuda=False)
