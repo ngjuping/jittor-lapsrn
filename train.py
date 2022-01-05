@@ -12,34 +12,41 @@ import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
 
-# Training settings
-parser = argparse.ArgumentParser(description="Jittor LapSRN")
-parser.add_argument("--batchSize", type=int, default=64, help="training batch size")
-parser.add_argument("--epochs", type=int, default=10, help="number of epochs to train for")
-parser.add_argument("--lr", type=float, default=1e-4, help="Learning Rate. Default=1e-4")
-parser.add_argument("--cuda", action="store_true", help="Use cuda?")
-parser.add_argument("--scale", default=4, type=int, help="evalution scale factor, Default: 4")
+def setup():
+    global opt, model, dataset, optimizer, scheduler, lossFn # expose globally
 
-global opt, model
-opt = parser.parse_args()
+    parser = argparse.ArgumentParser(description="Jittor LapSRN")
+    parser.add_argument("--cuda", dest="cuda", action="store_true")
+    parser.add_argument("--no-cuda", dest="cuda", action="store_false")
+    parser.add_argument("--batchSize", type=int, default=64, help="Batch size")
+    parser.add_argument("--startFrom", type=int, default=0, help="Continue from")
+    parser.add_argument("--epochs", type=int, default=100, help="Total number of epochs")
+    parser.add_argument("--lr", type=float, default=1e-4, help="Learning Rate. Default=1e-4")
+    parser.add_argument("--scale", default=4, type=int, help="Evalution scale factor, Default: 4")
+    parser.set_defaults(cuda=False)
+    opt = parser.parse_args()
 
-if(opt.cuda):
-    print("Using CUDA")
-    jt.flags.use_cuda = 1
+    if opt.cuda:
+        print("Using CUDA")
+        jt.flags.use_cuda = 1
 
-model = LapSRN()
-dataset = LapSRNDataset("data/lap_pry_x4_small.h5", batch_size=opt.batchSize)
-optimizer = optim.Adam(model.parameters(), lr=opt.lr)
-scheduler = LRScheduler(optimizer, opt.lr) # mutates learning rate of optimizer
-lossFn = L1_Charbonnier_loss()
+    saved_models_folder = "saves/"
+    model = LapSRN() # initialize
+    
+    if opt.startFrom > 0:
+        model.load(saved_models_folder + "lapsrn_model_epoch_{}.pkl".format(opt.startFrom))
+    
+    dataset = LapSRNDataset("data/lap_pry_x4_small.h5", batch_size=opt.batchSize)
+    optimizer = optim.Adam(model.parameters(), lr=opt.lr)
+    scheduler = LRScheduler(optimizer, opt.lr) # mutates learning rate of optimizer
+    lossFn = L1_Charbonnier_loss()
 
 def saveModel(model, epoch, isBest=False):
-    model_folder = "saves/"
-    if isBest:
-        path = model_folder + "model_best.pkl"
-    else:
-        path = model_folder + "lapsrn_model_epoch_{}.pkl".format(epoch)
+    path = saved_models_folder + "lapsrn_model_epoch_{}.pkl".format(epoch)
     model.save(path)
+    # save an extra best model
+    if isBest:
+        model.save(saved_models_folder + "model_best.pkl")
     print("Model saved as: {}".format(path))
 
 def train(model, optimizer, epoch, dataloader):
@@ -54,12 +61,16 @@ def train(model, optimizer, epoch, dataloader):
         optimizer.backward(loss=loss_x2)
         optimizer.step(loss_x4)
 
-best_psnr = 0
-for epoch in range(opt.epochs):
-    scheduler.step(len(dataset) * opt.batchSize)
-    train(model, optimizer, epoch, dataset)
-    psnr_predicted = eval(model)
-    best_psnr = max(best_psnr, psnr_predicted)
-    if best_psnr == psnr_predicted:
-        saveModel(model, epoch, isBest=True)
-    print(f'Epoch:{epoch} PSNR={psnr_predicted:.4f}, Best={best_psnr:.4f}')
+if __name__ == "__main__":
+    setup()
+    best_psnr = 0
+    epoch = 1
+    while(True):
+        scheduler.step(epoch) # update learning rate
+        train(model, optimizer, epoch, dataset) # train model with dataset
+        psnr_predicted = eval(model, opt) # evaluate
+        best_psnr = max(best_psnr, psnr_predicted) # store best result
+        if best_psnr == psnr_predicted:
+            saveModel(model, epoch, isBest=True) # save model on disk as pkl
+        print(f'Epoch:{epoch} PSNR={psnr_predicted:.4f}, Best={best_psnr:.4f}')
+        epoch += 1
