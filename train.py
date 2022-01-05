@@ -31,6 +31,11 @@ def setup():
         jt.flags.use_cuda = 1
 
     saved_models_folder = "saves/"
+    folder_exists = os.path.exists(saved_models_folder)
+    if not folder_exists:
+    os.makedirs(saved_models_folder) # Create a new directory because it does not exist 
+    print("The saved models directory " + saved_models_folder + "is created!")
+
     model = LapSRN() # initialize
     
     if opt.startFrom > 0:
