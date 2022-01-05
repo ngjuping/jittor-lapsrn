@@ -12,6 +12,11 @@ parser.add_argument("--model", default="model/model_epoch_100.pth", type=str, he
 parser.add_argument("--dataset", default="Set5", type=str, help="dataset name, Default: Set5")
 parser.add_argument("--scale", default=4, type=int, help="scale factor, Default: 4")
 
+opt = parser.parse_args()
+
+model = LapSRN()
+model.load("checkpoint/lapsrn_model_epoch_0.pkl")
+
 def PSNR(pred, gt, shave_border=0):
     height, width = pred.shape[:2]
     pred = pred[shave_border:height - shave_border, shave_border:width - shave_border]
@@ -22,14 +27,6 @@ def PSNR(pred, gt, shave_border=0):
         return 100
     return 20 * math.log10(255.0 / rmse)
 
-opt = parser.parse_args()
-cuda = opt.cuda
-
-if cuda and not torch.cuda.is_available():
-    raise Exception("No GPU found, please run without --cuda")
-
-model = LapSRN()
-model = model.load(opt.model)["model"]
 
 image_list = glob.glob(opt.dataset+"/*.*") 
 
@@ -58,11 +55,8 @@ for image_name in image_list:
     HR_2x, HR_4x = model(im_input)
     elapsed_time = time.time() - start_time
     avg_elapsed_time += elapsed_time
-
-    HR_4x = HR_4x.cpu()
-
-    im_h_y = HR_4x.data[0].numpy().astype(np.float32)
-
+    
+    im_h_y = HR_4x.data[0].astype(np.float32)
     im_h_y = im_h_y*255.
     im_h_y[im_h_y<0] = 0
     im_h_y[im_h_y>255.] = 255.
