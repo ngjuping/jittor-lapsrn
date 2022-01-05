@@ -13,7 +13,7 @@ import scipy.io as sio
 import matplotlib.pyplot as plt
 
 def setup():
-    global opt, model, dataset, optimizer, scheduler, lossFn # expose globally
+    global opt, model, dataset, optimizer, scheduler, lossFn, saved_models_folder # expose globally
 
     parser = argparse.ArgumentParser(description="Jittor LapSRN")
     parser.add_argument("--cuda", dest="cuda", action="store_true")
@@ -64,8 +64,9 @@ def train(model, optimizer, epoch, dataloader):
 if __name__ == "__main__":
     setup()
     best_psnr = 0
-    epoch = 1
+    epoch = opt.startFrom
     while(True):
+        epoch += 1
         scheduler.step(epoch) # update learning rate
         train(model, optimizer, epoch, dataset) # train model with dataset
         psnr_predicted = eval(model, opt) # evaluate
@@ -73,4 +74,4 @@ if __name__ == "__main__":
         if best_psnr == psnr_predicted:
             saveModel(model, epoch, isBest=True) # save model on disk as pkl
         print(f'Epoch:{epoch} PSNR={psnr_predicted:.4f}, Best={best_psnr:.4f}')
-        epoch += 1
+        
