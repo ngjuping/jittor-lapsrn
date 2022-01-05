@@ -32,8 +32,12 @@ def setup():
 def saveImages(className, inputImage, outputImage, gt):
     print(f"Visualizing and storing {className}")
     print("rescaling input")
-    inputImage = cv2.resize(inputImage, dsize=(outputImage.shape[1], outputImage.shape[0]), interpolation=cv2.INTER_CUBIC)
-    cv2.imwrite(f'{className}_input.png', inputImage)
+    inputImage_nn = cv2.resize(inputImage, dsize=(outputImage.shape[1], outputImage.shape[0]), interpolation=cv2.INTER_NEAREST)
+    inputImage_bilinear = cv2.resize(inputImage, dsize=(outputImage.shape[1], outputImage.shape[0]), interpolation=cv2.INTER_LINEAR)
+    inputImage_bicubic = cv2.resize(inputImage, dsize=(outputImage.shape[1], outputImage.shape[0]), interpolation=cv2.INTER_CUBIC)
+    cv2.imwrite(f'{className}_input_nn.png', inputImage_nn)
+    cv2.imwrite(f'{className}_input_bilinear.png', inputImage_bilinear)
+    cv2.imwrite(f'{className}_input_bicubic.png', inputImage_bicubic)
     cv2.imwrite(f'{className}_output.png', outputImage)
     cv2.imwrite(f'{className}_gt.png', gt)
 
