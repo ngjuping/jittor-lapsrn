@@ -5,17 +5,20 @@ import scipy.io as sio
 import matplotlib.pyplot as plt
 import jittor as jt
 from jittorLAPSRN import L1_Charbonnier_loss, LapSRN
+import matplotlib.pyplot as plt
 
-parser = argparse.ArgumentParser(description="Jittor LapSRN Eval")
-parser.add_argument("--cuda", action="store_true", help="use cuda?")
-parser.add_argument("--model", default="model/model_epoch_100.pth", type=str, help="model path")
-parser.add_argument("--dataset", default="Set5", type=str, help="dataset name, Default: Set5")
-parser.add_argument("--scale", default=4, type=int, help="scale factor, Default: 4")
+# jt.flags.use_cuda = 1
+
+parser = argparse.ArgumentParser(description="Jittor LapSRN Test")
+parser.add_argument("--cuda")
+parser.add_argument("--model", default="saves/lapsrn_model_epoch_9.pkl", type=str, help="Load from which model")
+parser.add_argument("--dataset", default="Set5", type=str, help="What dataset to use")
+parser.add_argument("--scale", default=4, type=int, help="Scale factor, default to 4")
 
 opt = parser.parse_args()
 
 model = LapSRN()
-model.load("checkpoint/lapsrn_model_epoch_0.pkl")
+model.load("saves/lapsrn_model_epoch_0.pkl")
 
 def PSNR(pred, gt, shave_border=0):
     height, width = pred.shape[:2]
@@ -27,6 +30,13 @@ def PSNR(pred, gt, shave_border=0):
         return 100
     return 20 * math.log10(255.0 / rmse)
 
+def visualize(className, inputImage, outputImage, gt):
+    plt.imshow(inputImage)
+    plt.savefig(f'{className}_input.png')
+    plt.imshow(outputImage)
+    plt.savefig(f'{className}_output.png')
+    plt.imshow(gt)
+    plt.savefig(f'{className}_gt.png')
 
 image_list = glob.glob(opt.dataset+"/*.*") 
 
@@ -35,11 +45,12 @@ avg_psnr_bicubic = 0.0
 avg_elapsed_time = 0.0
 
 for image_name in image_list:
-    print("Processing ", image_name)
     im_gt_y = sio.loadmat(image_name)['im_gt_y']
     im_b_y = sio.loadmat(image_name)['im_b_y']
     im_l_y = sio.loadmat(image_name)['im_l_y']
 
+    className = image_name.split('_')[0]
+    print(className)
     im_gt_y = im_gt_y.astype(float)
     im_b_y = im_b_y.astype(float)
     im_l_y = im_l_y.astype(float)
@@ -48,19 +59,20 @@ for image_name in image_list:
     avg_psnr_bicubic += psnr_bicubic
 
     im_input = im_l_y/255.
-
     im_input = jt.Var(im_input).float().view(1, -1, im_input.shape[0], im_input.shape[1])
 
     start_time = time.time()
     HR_2x, HR_4x = model(im_input)
     elapsed_time = time.time() - start_time
     avg_elapsed_time += elapsed_time
-    
+
     im_h_y = HR_4x.data[0].astype(np.float32)
     im_h_y = im_h_y*255.
     im_h_y[im_h_y<0] = 0
     im_h_y[im_h_y>255.] = 255.
     im_h_y = im_h_y[0,:,:]
+
+    visualize(className, im_l_y, im_h_y, im_gt_y)
 
     psnr_predicted = PSNR(im_gt_y, im_h_y,shave_border=opt.scale)
     avg_psnr_predicted += psnr_predicted
