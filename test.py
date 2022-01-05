@@ -8,6 +8,7 @@ from model import LapSRN
 from os import listdir
 from os.path import isfile, join
 from utils import PSNR
+import cv2
 
 def setup():
     global opt, model
@@ -30,12 +31,11 @@ def setup():
 
 def saveImages(className, inputImage, outputImage, gt):
     print(f"Visualizing and storing {className}")
-    plt.imshow(inputImage)
-    plt.savefig(f'{className}_input.png')
-    plt.imshow(outputImage)
-    plt.savefig(f'{className}_output.png')
-    plt.imshow(gt)
-    plt.savefig(f'{className}_gt.png')
+    print("rescaling input")
+    inputImage = cv2.resize(inputImage, dsize=(outputImage.shape[1], outputImage.shape[0]), interpolation=cv2.INTER_CUBIC)
+    cv2.imwrite(f'{className}_input.png', inputImage)
+    cv2.imwrite(f'{className}_output.png', outputImage)
+    cv2.imwrite(f'{className}_gt.png', gt)
 
 def eval(model, args, dataset="Set5", visualize=True):
     # set the mode to eval
