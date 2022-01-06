@@ -81,7 +81,7 @@ class LapSRN(Module):
 
             if isinstance(m, nn.ConvTranspose): # upsampling
                 c1, c2, h, w = m.weight.size()
-                weight = gaussian_filter(h) # [h, w]
+                weight = get_upsample_filter(h) # [h, w]
                 weight = weight.view(1, 1, h, w) # [1, 1, h, w]
                 m.weight = weight.repeat(c1, c2, 1, 1) # [c1, c2, h, w]
                 if m.bias is not None:
