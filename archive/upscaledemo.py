@@ -18,14 +18,19 @@ def get_upsample_filter(size):
              (1 - abs(og[1] - center) / factor)
     return jt.Var(filter).float()
 
-plt.imshow(get_upsample_filter(64), interpolation='none')
-plt.savefig("kernel1.png")
+bilinear_kernel = get_upsample_filter(64)
+print(bilinear_kernel.shape)
+plt.imshow(bilinear_kernel, interpolation='none')
+plt.savefig("BilinearKernel.png")
 
 def gkern(kernlen, std=10):
     """Returns a 2D Gaussian kernel array."""
     gkern1d = signal.gaussian(kernlen, std=std).reshape(kernlen, 1)
     gkern2d = np.outer(gkern1d, gkern1d)
+    gkern2d = jt.Var(gkern2d).float()
     return gkern2d
 
-plt.imshow(gkern(64), interpolation='none')
-plt.savefig("kernel2.png")
+gaussian_kernel = gkern(64)
+print(gaussian_kernel.shape)
+plt.imshow(gaussian_kernel, interpolation='none')
+plt.savefig("GaussianKernel.png")

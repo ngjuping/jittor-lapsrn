@@ -4,9 +4,10 @@ from jittor import nn
 from jittor import init
 import numpy as np
 import math
+from scipy import signal
 
+# 2D bilinear kernel, provided in original implementation
 def get_upsample_filter(size):
-    """Make a 2D bilinear kernel suitable for upsampling"""
     factor = (size + 1) // 2
     if size % 2 == 1:
         center = factor - 1
@@ -16,6 +17,13 @@ def get_upsample_filter(size):
     filter = (1 - abs(og[0] - center) / factor) * \
              (1 - abs(og[1] - center) / factor)
     return jt.Var(filter).float()
+
+# 2D Gaussian kernel, adjust std for larger kernlen
+def gaussian_filter(kernlen, std=10):
+    gkern1d = signal.gaussian(kernlen, std=std).reshape(kernlen, 1)
+    gkern2d = np.outer(gkern1d, gkern1d)
+    gkern2d = jt.Var(gkern2d).float()
+    return gkern2d
 
 class _Conv_Block(Module):    
     def __init__(self):
@@ -67,16 +75,17 @@ class LapSRN(Module):
         
         for m in self.modules():
             if isinstance(m, nn.Conv):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.gauss_(0, math.sqrt(2. / n))
+                m.weight.kaiming_normal_() # init weights with Gaussian(0, 2/no. of inputs)
                 if m.bias is not None:
-                    m.bias.zero_()
-            if isinstance(m, nn.ConvTranspose):
+                    m.bias.zero_() # init biases as zero if bias=True
+
+            if isinstance(m, nn.ConvTranspose): # upsampling
                 c1, c2, h, w = m.weight.size()
-                weight = get_upsample_filter(h)
-                m.weight = weight.view(1, 1, h, w).repeat(c1, c2, 1, 1)
+                weight = gaussian_filter(h) # [h, w]
+                weight = weight.view(1, 1, h, w) # [1, 1, h, w]
+                m.weight = weight.repeat(c1, c2, 1, 1) # [c1, c2, h, w]
                 if m.bias is not None:
-                    m.bias.zero_()
+                    m.bias.zero_() # init biases as zero if bias=True
                     
     def make_layer(self, block):
         layers = []
