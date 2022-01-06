@@ -1,0 +1,31 @@
+import numpy as np
+import jittor as jt
+from jittor import nn
+import matplotlib.pyplot as plt
+from scipy import signal
+
+def get_upsample_filter(size):
+    """Make a 2D bilinear kernel suitable for upsampling"""
+    factor = (size + 1) // 2
+    if size % 2 == 1:
+        center = factor - 1
+    else:
+        center = factor - 0.5
+    og = np.ogrid[:size, :size]
+    # print(og)
+    # print(np.array(og).shape)
+    filter = (1 - abs(og[0] - center) / factor) * \
+             (1 - abs(og[1] - center) / factor)
+    return jt.Var(filter).float()
+
+plt.imshow(get_upsample_filter(64), interpolation='none')
+plt.savefig("kernel1.png")
+
+def gkern(kernlen, std=10):
+    """Returns a 2D Gaussian kernel array."""
+    gkern1d = signal.gaussian(kernlen, std=std).reshape(kernlen, 1)
+    gkern2d = np.outer(gkern1d, gkern1d)
+    return gkern2d
+
+plt.imshow(gkern(64), interpolation='none')
+plt.savefig("kernel2.png")
